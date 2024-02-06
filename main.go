@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/NullpointerW/ethereum-wallet-tool/pkg/proxies"
 	"github.com/NullpointerW/ethereum-wallet-tool/pkg/proxies/shadowsocks"
@@ -10,11 +11,17 @@ import (
 	"github.com/deanxv/yescaptcha-go/req"
 	"io"
 	"net/http"
+	"regexp"
 	"time"
 )
 
-func main() {
-	apiKey := "xxx"
+var (
+	regExp         = `(\d{1,2})h(\d{1,2})m(\d{1,2})s`
+	apiKey         = "xxx"
+	yescaptchaWait = 80 * time.Second
+)
+
+func drip() (time.Duration, error) {
 	cli := yescaptcha.NewClient(apiKey, "33989", "https://api.yescaptcha.com")
 	task := req.NoCaptchaTaskProxylessRequest{
 		WebsiteURL: "https://artio.faucet.berachain.com",
@@ -24,28 +31,24 @@ func main() {
 	}
 	resp, err := cli.CreateNoCaptchaTaskProxyless(&task)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return 0, (err)
 	}
-	time.Sleep(40 * time.Second)
+	time.Sleep(yescaptchaWait)
 	result, err := cli.GetTaskResult(resp.TaskId)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return 0, (err)
 	}
 	authorization := "Bearer " + result.Solution.GRecaptchaResponse
 	fmt.Println(authorization)
-	url := "https://artio-80085-faucet-api-recaptcha.berachain.com/api/claim?address=0x426D2B685259d2bB75F2fe312D9b79289b3C5DD3"
+	url := "https://artio-80085-faucet-api-recaptcha.berachain.com/api/claim?address=0x961dfB987266e3D5029713E7af4F989a41eB961A"
 
-	marshal, err := json.Marshal(map[string]string{"address": "0x426D2B685259d2bB75F2fe312D9b79289b3C5DD3"})
+	marshal, err := json.Marshal(map[string]string{"address": "0x961dfB987266e3D5029713E7af4F989a41eB961A"})
 	if err != nil {
-		fmt.Println(err)
-		return
+		return 0, (err)
 	}
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(marshal))
 	if err != nil {
-		fmt.Println(err)
-		return
+		return 0, (err)
 	}
 	request.Header.Set("authority", "artio-80085-faucet-api-recaptcha.berachain.com")
 	request.Header.Set("accept", "*/*")
@@ -57,19 +60,59 @@ func main() {
 	request.Header.Set("referer", "https://artio.faucet.berachain.com/")
 	request.Header.Set("user-agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
 	request.Header.Set("Authorization", authorization)
-	httpCli := SSClientYaml(&http.Client{})
+	httpCli := (&http.Client{})
 	do, err := httpCli.Do(request)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return 0, (err)
 	}
-	fmt.Println(do.Status)
+	if do.StatusCode == http.StatusOK {
+		fmt.Println("drop ok")
+		d, _ := time.ParseDuration("8h")
+		return d, nil
+	}
 	all, err := io.ReadAll(do.Body)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return 0, (err)
 	}
-	fmt.Println(string(all))
+	s := string(all)
+	fmt.Println(s)
+	return estimatedTime(s)
+}
+
+func estimatedTime(s string) (est time.Duration, err error) {
+	reg := regexp.MustCompile(regExp)
+	match := reg.FindStringSubmatch(s)
+	if len(match) < 1 {
+		return 0, errors.New("parse time failed: " + s)
+	}
+	est, err = time.ParseDuration(match[0])
+	if err != nil {
+		return 0, errors.New("parseDuration failed: " + err.Error())
+	}
+	est -= yescaptchaWait
+	//for i, sd := range match[1:] {
+	//	n, _ := strconv.Atoi(sd)
+	//	switch i {
+	//	case 0:
+	//		est += time.Hour * time.Duration(n)
+	//	case 1:
+	//		est += time.Minute * time.Duration(n)
+	//	case 2:
+	//		est += time.Second * time.Duration(n)
+	//	}
+	//}
+	return
+}
+
+func main() {
+	for {
+		d, err := drip()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		time.Sleep(d)
+	}
 }
 
 func SSClientYaml(cli *http.Client) *http.Client {
