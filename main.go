@@ -23,13 +23,12 @@ var (
 
 func drip() (time.Duration, error) {
 	cli := yescaptcha.NewClient(apiKey, "33989", "https://api.yescaptcha.com")
-	task := req.NoCaptchaTaskProxylessRequest{
+	task := req.TurnstileTaskProxylessRequest{
 		WebsiteURL: "https://artio.faucet.berachain.com",
-		Type:       "RecaptchaV3TaskProxylessM1",
-		WebsiteKey: "6LfOA04pAAAAAL9ttkwIz40hC63_7IsaU2MgcwVH",
-		PageAction: "driptoken",
+		Type:       "TurnstileTaskProxylessM1",
+		WebsiteKey: "0x4AAAAAAARdAuciFArKhVwt",
 	}
-	resp, err := cli.CreateNoCaptchaTaskProxyless(&task)
+	resp, err := cli.CreateTurnstileTaskProxyless(&task)
 	if err != nil {
 		return 0, (err)
 	}
@@ -38,10 +37,10 @@ func drip() (time.Duration, error) {
 	if err != nil {
 		return 0, (err)
 	}
-	authorization := "Bearer " + result.Solution.GRecaptchaResponse
+	authorization := "Bearer " + result.Solution.Token
 	fmt.Println(authorization)
-	url := "https://artio-80085-faucet-api-recaptcha.berachain.com/api/claim?address=0x961dfB987266e3D5029713E7af4F989a41eB961A"
-
+	//url := "https://artio-80085-faucet-api-recaptcha.berachain.com/api/claim?address=0x961dfB987266e3D5029713E7af4F989a41eB961A"
+	url := "https://artio-80085-faucet-api-cf.berachain.com/api/claim?address=0x961dfB987266e3D5029713E7af4F989a41eB961A"
 	marshal, err := json.Marshal(map[string]string{"address": "0x961dfB987266e3D5029713E7af4F989a41eB961A"})
 	if err != nil {
 		return 0, (err)
