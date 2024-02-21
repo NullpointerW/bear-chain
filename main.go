@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/NullpointerW/ethereum-wallet-tool/pkg/proxies"
 	"github.com/NullpointerW/ethereum-wallet-tool/pkg/proxies/shadowsocks"
 	"github.com/deanxv/yescaptcha-go"
 	"github.com/deanxv/yescaptcha-go/req"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"time"
@@ -38,7 +38,7 @@ func drip() (time.Duration, error) {
 		return 0, (err)
 	}
 	authorization := "Bearer " + result.Solution.Token
-	fmt.Println(authorization)
+	log.Println(authorization)
 	//url := "https://artio-80085-faucet-api-recaptcha.berachain.com/api/claim?address=0x961dfB987266e3D5029713E7af4F989a41eB961A"
 	url := "https://artio-80085-faucet-api-cf.berachain.com/api/claim?address=0x961dfB987266e3D5029713E7af4F989a41eB961A"
 	marshal, err := json.Marshal(map[string]string{"address": "0x961dfB987266e3D5029713E7af4F989a41eB961A"})
@@ -65,7 +65,7 @@ func drip() (time.Duration, error) {
 		return 0, (err)
 	}
 	if do.StatusCode == http.StatusOK {
-		fmt.Println("drop ok")
+		log.Println("drop ok")
 		d, _ := time.ParseDuration("8h")
 		return d, nil
 	}
@@ -74,7 +74,7 @@ func drip() (time.Duration, error) {
 		return 0, (err)
 	}
 	s := string(all)
-	fmt.Println(s)
+	log.Println(s)
 	return estimatedTime(s)
 }
 
@@ -107,7 +107,7 @@ func main() {
 	for {
 		d, err := drip()
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
 		time.Sleep(d)
